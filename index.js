@@ -14,21 +14,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// Connect to MongoDB ONCE only
-mongoose
-  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shopdemo")
-  .then(() => {
-    console.log("MongoDB connected");
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-  });
-
 // Product schema
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  price: { type: Number, required: true },
-  description: { type: String, required: true },
+  price: { type: Number },
+  description: { type: String },
+  image: { type: String },
 });
 
 const Product = mongoose.model("Product", productSchema);
@@ -44,12 +35,12 @@ app.get("/api/status", (req, res) => {
 // CREATE product
 app.post("/products", async (req, res) => {
   try {
-    const { name, price, description } = req.body;
+    const { name, price, description, image } = req.body;
 
-    if (!name || price === undefined || !description) {
+    if (!name) {
       return res.status(400).json({
         ok: false,
-        message: "name, price and description are required",
+        message: "name is required",
       });
     }
 
@@ -57,6 +48,7 @@ app.post("/products", async (req, res) => {
       name,
       price,
       description,
+      image,
     });
 
     const savedProduct = await newProduct.save();
@@ -78,7 +70,9 @@ app.post("/products", async (req, res) => {
 // READ all products
 app.get("/products", async (req, res) => {
   try {
+    console.log("GET /products hit");
     const products = await Product.find();
+    console.log("Products found:", products.length);
 
     res.json({
       ok: true,
@@ -97,18 +91,18 @@ app.get("/products", async (req, res) => {
 app.put("/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, description } = req.body;
+    const { name, price, description, image } = req.body;
 
-    if (!name || price === undefined || !description) {
+    if (!name) {
       return res.status(400).json({
         ok: false,
-        message: "name, price and description are required",
+        message: "name is required",
       });
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      { name, price, description },
+      { name, price, description, image },
       { new: true, runValidators: true }
     );
 
@@ -161,6 +155,20 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await mongoose.connect(
+      process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shopdemo"
+    );
+
+    console.log("MongoDB connected");
+
+    app.listen(PORT, () => {
+      console.log(`Server listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("MongoDB connection error:", err.message);
+  }
+}
+
+startServer();
