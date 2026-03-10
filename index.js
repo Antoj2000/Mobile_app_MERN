@@ -14,8 +14,9 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// Connect to MongoDB ONCE only
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shopdemo")
   .then(() => {
     console.log("MongoDB connected");
   })
@@ -23,16 +24,16 @@ mongoose
     console.error("MongoDB connection error:", err.message);
   });
 
-const quoteSchema = new mongoose.Schema(
-  {
-    text: { type: String, required: true },
-    quote: { type: String, required: true },
-  },
-  { timestamps: true }
-);
+// Product schema
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  description: { type: String, required: true },
+});
 
-const QuoteEntry = mongoose.model("QuoteEntry", quoteSchema);
+const Product = mongoose.model("Product", productSchema);
 
+// Test route
 app.get("/api/status", (req, res) => {
   res.json({
     ok: true,
@@ -40,27 +41,33 @@ app.get("/api/status", (req, res) => {
   });
 });
 
-app.post("/api/quotes", async (req, res) => {
+// CREATE product
+app.post("/products", async (req, res) => {
   try {
-    const { text, quote } = req.body;
+    const { name, price, description } = req.body;
 
-    if (!text || !quote) {
+    if (!name || price === undefined || !description) {
       return res.status(400).json({
         ok: false,
-        message: "text and quote are required",
+        message: "name, price and description are required",
       });
     }
 
-    const newEntry = new QuoteEntry({ text, quote });
-    await newEntry.save();
+    const newProduct = new Product({
+      name,
+      price,
+      description,
+    });
+
+    const savedProduct = await newProduct.save();
 
     res.status(201).json({
       ok: true,
-      message: "Quote saved successfully",
-      data: newEntry,
+      message: "Product created successfully",
+      data: savedProduct,
     });
   } catch (error) {
-    console.error("POST /api/quotes error:", error.message);
+    console.error("POST /products error:", error.message);
     res.status(500).json({
       ok: false,
       message: "Server error",
@@ -68,15 +75,85 @@ app.post("/api/quotes", async (req, res) => {
   }
 });
 
-app.get("/api/quotes", async (req, res) => {
+// READ all products
+app.get("/products", async (req, res) => {
   try {
-    const quotes = await QuoteEntry.find().sort({ createdAt: -1 });
+    const products = await Product.find();
+
     res.json({
       ok: true,
-      data: quotes,
+      data: products,
     });
   } catch (error) {
-    console.error("GET /api/quotes error:", error.message);
+    console.error("GET /products error:", error.message);
+    res.status(500).json({
+      ok: false,
+      message: "Server error",
+    });
+  }
+});
+
+// UPDATE product
+app.put("/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, price, description } = req.body;
+
+    if (!name || price === undefined || !description) {
+      return res.status(400).json({
+        ok: false,
+        message: "name, price and description are required",
+      });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { name, price, description },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        ok: false,
+        message: "Product not found",
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Product updated successfully",
+      data: updatedProduct,
+    });
+  } catch (error) {
+    console.error("PUT /products/:id error:", error.message);
+    res.status(500).json({
+      ok: false,
+      message: "Server error",
+    });
+  }
+});
+
+// DELETE product
+app.delete("/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedProduct = await Product.findByIdAndDelete(id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({
+        ok: false,
+        message: "Product not found",
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Product deleted successfully",
+      data: deletedProduct,
+    });
+  } catch (error) {
+    console.error("DELETE /products/:id error:", error.message);
     res.status(500).json({
       ok: false,
       message: "Server error",
