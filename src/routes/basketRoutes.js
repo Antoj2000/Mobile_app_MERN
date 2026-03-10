@@ -8,7 +8,7 @@ const {
   updateBasketQuantity
 } = require("../controllers/basketController");
 
-router.get("/:userId", getBasket);
+router.get("/", getBasket);
 router.post("/add", addToBasket);
 router.delete("/remove", removeFromBasket);
 router.put("/update", updateBasketQuantity);

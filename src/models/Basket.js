@@ -15,10 +15,6 @@ const basketItemSchema = new mongoose.Schema({
 });
 
 const basketSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true
-  },
   items: [basketItemSchema]
 });
 

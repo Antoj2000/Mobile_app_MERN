@@ -1,17 +1,22 @@
 // src/controllers/basketController.js
 const Basket = require("../models/Basket");
 
+async function getOrCreateBasket() {
+  let basket = await Basket.findOne();
+
+  if (!basket) {
+    basket = await Basket.create({ items: [] });
+  }
+
+  return basket;
+}
+
 async function getBasket(req, res) {
   try {
-    const { userId } = req.params;
+    const basket = await getOrCreateBasket();
+    const populatedBasket = await Basket.findById(basket._id).populate("items.product");
 
-    let basket = await Basket.findOne({ userId }).populate("items.product");
-
-    if (!basket) {
-      basket = await Basket.create({ userId, items: [] });
-    }
-
-    res.json(basket);
+    res.json(populatedBasket);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -19,13 +24,8 @@ async function getBasket(req, res) {
 
 async function addToBasket(req, res) {
   try {
-    const { userId, productId, quantity = 1 } = req.body;
-
-    let basket = await Basket.findOne({ userId });
-
-    if (!basket) {
-      basket = new Basket({ userId, items: [] });
-    }
+    const { productId, quantity = 1 } = req.body;
+    const basket = await getOrCreateBasket();
 
     const existingItem = basket.items.find(
       (item) => item.product.toString() === productId
@@ -41,7 +41,7 @@ async function addToBasket(req, res) {
     }
 
     await basket.save();
-    const populatedBasket = await Basket.findOne({ userId }).populate("items.product");
+    const populatedBasket = await Basket.findById(basket._id).populate("items.product");
 
     res.status(200).json(populatedBasket);
   } catch (error) {
@@ -51,9 +51,8 @@ async function addToBasket(req, res) {
 
 async function removeFromBasket(req, res) {
   try {
-    const { userId, productId } = req.body;
-
-    const basket = await Basket.findOne({ userId });
+    const { productId } = req.body;
+    const basket = await Basket.findOne();
 
     if (!basket) {
       return res.status(404).json({ error: "Basket not found" });
@@ -64,7 +63,7 @@ async function removeFromBasket(req, res) {
     );
 
     await basket.save();
-    const populatedBasket = await Basket.findOne({ userId }).populate("items.product");
+    const populatedBasket = await Basket.findById(basket._id).populate("items.product");
 
     res.json(populatedBasket);
   } catch (error) {
@@ -74,9 +73,8 @@ async function removeFromBasket(req, res) {
 
 async function updateBasketQuantity(req, res) {
   try {
-    const { userId, productId, quantity } = req.body;
-
-    const basket = await Basket.findOne({ userId });
+    const { productId, quantity } = req.body;
+    const basket = await Basket.findOne();
 
     if (!basket) {
       return res.status(404).json({ error: "Basket not found" });
@@ -99,7 +97,7 @@ async function updateBasketQuantity(req, res) {
     }
 
     await basket.save();
-    const populatedBasket = await Basket.findOne({ userId }).populate("items.product");
+    const populatedBasket = await Basket.findById(basket._id).populate("items.product");
 
     res.json(populatedBasket);
   } catch (error) {
